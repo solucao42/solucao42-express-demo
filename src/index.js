@@ -1,4 +1,4 @@
-const { s42ErrorMiddleware} = require("../solucao42");
+const { s42ErrorMiddleware} = require("./solucao42");
 
 const express = require("express");
 const morgan = require("morgan");

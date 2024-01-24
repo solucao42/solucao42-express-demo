@@ -1,22 +1,35 @@
+const { readFileSync } = require('fs');
+
 const opentelemetry = require('@opentelemetry/sdk-node');
 const {
-    OTLPTraceExporter,
-    StatusCode
+    OTLPTraceExporter
 } = require('@opentelemetry/exporter-trace-otlp-proto');
 const { getNodeAutoInstrumentations } = require('@opentelemetry/auto-instrumentations-node')
 
-process.env.OTEL_RESOURCE_ATTRIBUTES =
-    `service.name=solucao42-express-demo` + (process.env.NODE_ENV !== 'prod' ? '-dev' : '');
+const ENV_NAME = process.env.NODE_ENV || 'dev';
+const PACKAGE = JSON.parse(readFileSync('./package.json') || '{}');
 
 process.env.OTEL_EXPORTER_OTLP_HEADERS =
-    'api-key=XXX';
+    'api-key=API_KEY';
 
-process.env.OTEL_EXPORTER_OTLP_ENDPOINT = 'https://collector-http-oltp.solucao42.com.br/';
+function createResourceParams() {
+    let serviceName = PACKAGE.name || "unknown-service-name";
+
+    if(ENV_NAME !== 'prod') serviceName += `-${ENV_NAME}`;
+
+    return {
+        'service.name': serviceName,
+        'service.version': PACKAGE.version || '0.0.0',
+        'service.environment': ENV_NAME || 'dev',
+    }
+}
 
 const sdk = new opentelemetry.NodeSDK({
+    resource: new opentelemetry.resources.Resource(createResourceParams()),
     traceExporter: new OTLPTraceExporter({
+        url: 'https://collector-http-oltp.solucao42.com.br/v1/traces',
         concurrencyLimit: 5,
-        timeoutMillis: 9000
+        timeoutMillis: 30000
     }),
     instrumentations: [getNodeAutoInstrumentations({
         "@opentelemetry/instrumentation-http": {
